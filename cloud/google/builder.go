@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"k8s.io/client-go/pkg/util/intstr"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -97,7 +98,7 @@ func (g *GCPCloud) BuildImport(gskey string, tarf []byte) error {
 	return nil
 }
 
-func (g *GCPCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
+func (g *GCPCloud) BuildCreate(app, filename string) (*pb.Build, error) {
 	service := g.storage()
 	bucket := g.BucketName
 	id := generateId("B", 5)
@@ -111,7 +112,13 @@ func (g *GCPCloud) BuildCreate(app string, tarf []byte) (*pb.Build, error) {
 		ContentType: "application/gzip",
 	}
 
-	if _, err := service.Objects.Insert(bucket, object).Media(bytes.NewBuffer(tarf)).Do(); err != nil {
+	reader, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("reading tempfile err: %v", err)
+	}
+	defer reader.Close()
+
+	if _, err := service.Objects.Insert(bucket, object).Media(reader).Do(); err != nil {
 		return nil, fmt.Errorf("Uploading to gs://%s/%s err: %s", bucket, gskey, err)
 	}
 
