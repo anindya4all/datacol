@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	sched "github.com/dinesh/datacol/cloud/kube"
 	"google.golang.org/api/cloudbuild/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/storage/v1"
@@ -198,8 +199,12 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 	if err != nil {
 		return nil, err
 	}
+	c, err := getKubeClientset(g.DeploymentName)
+	if err != nil {
+		return nil, err
+	}
 
-	deployer, err := newDeployer(g.DeploymentName)
+	deployer, err := sched.NewDeployer(c)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +218,7 @@ func (g *GCPCloud) BuildRelease(b *pb.Build) (*pb.Release, error) {
 		port = p
 	}
 
-	ret, err := deployer.Run(&DeployRequest{
+	ret, err := deployer.Run(&sched.DeployRequest{
 		ServiceID:     b.App,
 		Image:         image,
 		Replicas:      1,
